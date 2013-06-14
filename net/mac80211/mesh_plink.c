@@ -682,7 +682,7 @@ void mesh_rx_plink_frame(struct ieee80211_sub_if_data *sdata,
 	enum plink_event event;
 	enum ieee80211_self_protected_actioncode ftype;
 	size_t baselen;
-	bool matches_local = true;
+	bool matches_local;
 	u8 ie_len;
 	u8 *baseaddr;
 	u32 changed = 0;
@@ -778,11 +778,12 @@ void mesh_rx_plink_frame(struct ieee80211_sub_if_data *sdata,
 		return;
 	}
 
+	matches_local = ftype == WLAN_SP_MESH_PEERING_CLOSE ||
+			mesh_matches_local(sdata, &elems);
+
 	/* Now we will figure out the appropriate event... */
 	event = PLINK_UNDEFINED;
-	if (ftype != WLAN_SP_MESH_PEERING_CLOSE &&
-	    !mesh_matches_local(sdata, &elems)) {
-		matches_local = false;
+	if (!matches_local) {
 		switch (ftype) {
 		case WLAN_SP_MESH_PEERING_OPEN:
 			event = OPN_RJCT;
