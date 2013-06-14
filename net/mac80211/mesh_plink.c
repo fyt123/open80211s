@@ -795,14 +795,16 @@ void mesh_rx_plink_frame(struct ieee80211_sub_if_data *sdata,
 		}
 	}
 
+	/* deny open request from non-matching peer */
 	if (!sta && !matches_local) {
 		rcu_read_unlock();
-		llid = 0;
 		mesh_plink_frame_tx(sdata, WLAN_SP_MESH_PEERING_CLOSE,
-				    mgmt->sa, llid, plid,
+				    mgmt->sa, 0, plid,
 				    cpu_to_le16(WLAN_REASON_MESH_CONFIG));
 		return;
-	} else if (!sta) {
+	}
+	
+	if (!sta) {
 		/* ftype == WLAN_SP_MESH_PEERING_OPEN */
 		if (!mesh_plink_free_count(sdata)) {
 			mpl_dbg(sdata, "Mesh plink error: no more free plinks\n");
