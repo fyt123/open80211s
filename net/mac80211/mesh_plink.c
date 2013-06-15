@@ -673,6 +673,25 @@ static void mesh_plink_close(struct ieee80211_sub_if_data *sdata,
 			    sta->sta.addr, sta->llid, sta->plid, reason);
 }
 
+static u32 mesh_plink_establish(struct ieee80211_sub_if_data *sdata,
+				struct sta_info *sta)
+	__releases(&sta->lock)
+{
+	struct mesh_config *mshcfg = &sdata->u.mesh.mshcfg;
+	u32 changed = 0;
+
+	del_timer(&sta->plink_timer);
+	sta->plink_state = NL80211_PLINK_ESTAB;
+	spin_unlock_bh(&sta->lock);
+	changed |= mesh_plink_inc_estab_count(sdata);
+	changed |= mesh_set_ht_prot_mode(sdata);
+	changed |= mesh_set_short_slot_time(sdata);
+	mpl_dbg(sdata, "Mesh plink with %pM ESTABLISHED\n", sta->sta.addr);
+	ieee80211_mps_sta_status_update(sta);
+	changed |= ieee80211_mps_set_sta_local_pm(sta, mshcfg->power_mode);
+	return changed;
+}
+
 
 void mesh_rx_plink_frame(struct ieee80211_sub_if_data *sdata,
 			 struct ieee80211_mgmt *mgmt, size_t len,
@@ -944,17 +963,7 @@ void mesh_rx_plink_frame(struct ieee80211_sub_if_data *sdata,
 					    sta->sta.addr, llid, plid, 0);
 			break;
 		case CNF_ACPT:
-			del_timer(&sta->plink_timer);
-			sta->plink_state = NL80211_PLINK_ESTAB;
-			spin_unlock_bh(&sta->lock);
-			changed |= mesh_plink_inc_estab_count(sdata);
-			changed |= mesh_set_ht_prot_mode(sdata);
-			changed |= mesh_set_short_slot_time(sdata);
-			mpl_dbg(sdata, "Mesh plink with %pM ESTABLISHED\n",
-				sta->sta.addr);
-			ieee80211_mps_sta_status_update(sta);
-			changed |= ieee80211_mps_set_sta_local_pm(sta,
-						       mshcfg->power_mode);
+			changed |= mesh_plink_establish(sdata, sta);
 			break;
 		default:
 			spin_unlock_bh(&sta->lock);
@@ -970,20 +979,10 @@ void mesh_rx_plink_frame(struct ieee80211_sub_if_data *sdata,
 			mesh_plink_close(sdata, sta, event);
 			break;
 		case OPN_ACPT:
-			del_timer(&sta->plink_timer);
-			sta->plink_state = NL80211_PLINK_ESTAB;
-			spin_unlock_bh(&sta->lock);
-			changed |= mesh_plink_inc_estab_count(sdata);
-			changed |= mesh_set_ht_prot_mode(sdata);
-			changed |= mesh_set_short_slot_time(sdata);
-			mpl_dbg(sdata, "Mesh plink with %pM ESTABLISHED\n",
-				sta->sta.addr);
+			changed |= mesh_plink_establish(sdata, sta);
 			mesh_plink_frame_tx(sdata,
 					    WLAN_SP_MESH_PEERING_CONFIRM,
 					    sta->sta.addr, llid, plid, 0);
-			ieee80211_mps_sta_status_update(sta);
-			changed |= ieee80211_mps_set_sta_local_pm(sta,
-							mshcfg->power_mode);
 			break;
 		default:
 			spin_unlock_bh(&sta->lock);
