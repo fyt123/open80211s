@@ -2137,13 +2137,13 @@ int ieee80211_add_ext_srates_ie(struct ieee80211_sub_if_data *sdata,
 			if ((rate_flags & sband->bitrates[i].flags)
 			    != rate_flags)
 				continue;
-			if (skip++ < 8)
-				continue;
 			if (need_basic && basic_rates & BIT(i))
 				basic = 0x80;
 			rate = DIV_ROUND_UP(sband->bitrates[i].bitrate,
 					    5 * (1 << shift));
 			*pos++ = basic | (u8) rate;
+			if (skip++ < 8)
+				continue;
 		}
 	}
 	return 0;
